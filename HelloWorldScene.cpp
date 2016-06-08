@@ -1,5 +1,6 @@
 #include "HelloWorldScene.h"
 #include "SimpleAudioEngine.h"
+#include "VideoPlayer.hpp"
 
 USING_NS_CC;
 
@@ -21,6 +22,8 @@ Scene* HelloWorld::createScene()
 // on "init" you need to initialize your instance
 bool HelloWorld::init()
 {
+    mPause = false;
+    mVideoPlayer = VideoPlayer::create("/Users/ycchen/Video.mp4", 1024, 576);
     //////////////////////////////
     // 1. super init first
     if ( !Layer::init() )
@@ -39,7 +42,7 @@ bool HelloWorld::init()
     auto closeItem = MenuItemImage::create(
                                            "CloseNormal.png",
                                            "CloseSelected.png",
-                                           CC_CALLBACK_1(HelloWorld::menuCloseCallback, this));
+                                           CC_CALLBACK_1(HelloWorld::menuFunctionCallback, this));
     
     closeItem->setPosition(Vec2(origin.x + visibleSize.width - closeItem->getContentSize().width/2 ,
                                 origin.y + closeItem->getContentSize().height/2));
@@ -51,6 +54,7 @@ bool HelloWorld::init()
 
     /////////////////////////////
     // 3. add your codes below...
+    
 
     // add a label shows "Hello World"
     // create and initialize a label
@@ -69,6 +73,8 @@ bool HelloWorld::init()
 
     // position the sprite on the center of the screen
     sprite->setPosition(Vec2(visibleSize.width/2 + origin.x, visibleSize.height/2 + origin.y));
+    
+    this->addChild(mVideoPlayer);
 
     // add the sprite as a child to this layer
     this->addChild(sprite, 0);
@@ -84,4 +90,42 @@ void HelloWorld::menuCloseCallback(Ref* pSender)
 #if (CC_TARGET_PLATFORM == CC_PLATFORM_IOS)
     exit(0);
 #endif
+}
+
+void HelloWorld::menuStartCallback(Ref* pSender)
+{
+    mVideoPlayer->start();
+}
+
+void HelloWorld::menuPauseCallback(Ref* pSender)
+{
+    mPause = ! mPause;
+    mVideoPlayer->pause(true);
+}
+
+void HelloWorld::menuStopCallback(Ref* pSender)
+{
+    mVideoPlayer->stop();
+}
+
+void HelloWorld::menuFunctionCallback(Ref* pSender)
+{
+    static int value = 0;
+    
+    switch(value % 4) {
+        case 0:
+            mVideoPlayer->start();
+            break;
+        case 1:
+            mVideoPlayer->pause(true);
+            break;
+        case 2:
+            mVideoPlayer->pause(false);
+            break;
+        case 3:
+            mVideoPlayer->stop();
+            break;
+    }
+    
+    value ++;
 }
