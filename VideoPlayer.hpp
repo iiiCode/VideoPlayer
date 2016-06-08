@@ -36,7 +36,7 @@ public:
     void seek(int64_t seekTime);
     void accurateSeek(int64_t seekTime);
     void setTimeScale(int scale);
-    void setPlaybackEndCallback(void (callback)());
+    void setPlaybackEndCallback(void (callback)(VideoPlayer *, const char *));
     virtual void update(float delta);
     void draw(Renderer *renderer, const Mat4& transform, uint32_t flags);
 
@@ -59,7 +59,7 @@ private:
     
     int mDelta;
     
-    void (*mVideoEndCallback)();
+    void (*mVideoEndCallback)(VideoPlayer *, const char *);
     RingBuffer mPictureRingBuffer;
   
     std::string mFilePath;

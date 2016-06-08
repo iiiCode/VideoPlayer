@@ -53,6 +53,10 @@ void VideoPlayer::stop()
 {
     LOG_START();
     
+    if (mStop) {
+        return;
+    }
+    
     mStop = true;
     mPictureRingBuffer.notifyRingBufferExit();
     mPictureRingBuffer.flush();
@@ -69,6 +73,9 @@ void VideoPlayer::stop()
 void VideoPlayer::pause(bool _pause)
 {
     LOG_START();
+    if (mStop) {
+        return;
+    }
     mPause = _pause;
     LOG_END();
 }
@@ -88,7 +95,7 @@ void VideoPlayer::setTimeScale(int scale)
     
 }
 
-void VideoPlayer::setPlaybackEndCallback(void (*callback)())
+void VideoPlayer::setPlaybackEndCallback(void (*callback)(VideoPlayer *, const char *))
 {
     mVideoEndCallback = callback;
 }
@@ -204,8 +211,7 @@ void *VideoPlayer::doProcessVideo(void *args)
     while(! player->mStop) {
         if (av_read_frame(player->mFormatCtx, &packet) < 0) {
             printf("END OF FILE.\n");
-            //mVideoEndCallback();
-            player->mStop = true;
+            player->mVideoEndCallback(player, "stop");
             av_free_packet(&packet);
             break;
         }

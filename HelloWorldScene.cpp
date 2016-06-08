@@ -24,6 +24,7 @@ bool HelloWorld::init()
 {
     mPause = false;
     mVideoPlayer = VideoPlayer::create("/Users/ycchen/Video.mp4", 1024, 576);
+    mVideoPlayer->setPlaybackEndCallback(videoEnd);
     //////////////////////////////
     // 1. super init first
     if ( !Layer::init() )
@@ -42,7 +43,7 @@ bool HelloWorld::init()
     auto closeItem = MenuItemImage::create(
                                            "CloseNormal.png",
                                            "CloseSelected.png",
-                                           CC_CALLBACK_1(HelloWorld::menuFunctionCallback, this));
+                                           CC_CALLBACK_1(HelloWorld::menuCloseCallback, this));
     
     closeItem->setPosition(Vec2(origin.x + visibleSize.width - closeItem->getContentSize().width/2 ,
                                 origin.y + closeItem->getContentSize().height/2));
@@ -55,7 +56,45 @@ bool HelloWorld::init()
     /////////////////////////////
     // 3. add your codes below...
     
+    auto startItem = MenuItemImage::create(
+                                           "CloseNormal.png",
+                                           "CloseSelected.png",
+                                           CC_CALLBACK_1(HelloWorld::menuStartCallback, this));
+    
+    startItem->setPosition(Vec2(origin.x + visibleSize.width - startItem->getContentSize().width/2 ,
+                                origin.y + startItem->getContentSize().height * 2));
+    
+    // create menu, it's an autorelease object
+    auto startMenu = Menu::create(startItem, NULL);
+    startMenu->setPosition(Vec2::ZERO);
+    this->addChild(startMenu, 1);
 
+    auto pauseItem = MenuItemImage::create(
+                                           "CloseNormal.png",
+                                           "CloseSelected.png",
+                                           CC_CALLBACK_1(HelloWorld::menuPauseCallback, this));
+    
+    pauseItem->setPosition(Vec2(origin.x + visibleSize.width - pauseItem->getContentSize().width/2 ,
+                                origin.y + pauseItem->getContentSize().height * 3));
+    
+    // create menu, it's an autorelease object
+    auto pauseMenu = Menu::create(pauseItem, NULL);
+    pauseMenu->setPosition(Vec2::ZERO);
+    this->addChild(pauseMenu, 1);
+    
+    auto stopItem = MenuItemImage::create(
+                                           "CloseNormal.png",
+                                           "CloseSelected.png",
+                                           CC_CALLBACK_1(HelloWorld::menuStopCallback, this));
+    
+    stopItem->setPosition(Vec2(origin.x + visibleSize.width - stopItem->getContentSize().width/2 ,
+                                origin.y + stopItem->getContentSize().height * 4));
+    
+    // create menu, it's an autorelease object
+    auto stopMenu = Menu::create(stopItem, NULL);
+    stopMenu->setPosition(Vec2::ZERO);
+    this->addChild(stopMenu, 1);
+    
     // add a label shows "Hello World"
     // create and initialize a label
     
@@ -100,7 +139,7 @@ void HelloWorld::menuStartCallback(Ref* pSender)
 void HelloWorld::menuPauseCallback(Ref* pSender)
 {
     mPause = ! mPause;
-    mVideoPlayer->pause(true);
+    mVideoPlayer->pause(mPause);
 }
 
 void HelloWorld::menuStopCallback(Ref* pSender)
@@ -108,24 +147,9 @@ void HelloWorld::menuStopCallback(Ref* pSender)
     mVideoPlayer->stop();
 }
 
-void HelloWorld::menuFunctionCallback(Ref* pSender)
+void HelloWorld::videoEnd(VideoPlayer *player, const char *info)
 {
-    static int value = 0;
-    
-    switch(value % 4) {
-        case 0:
-            mVideoPlayer->start();
-            break;
-        case 1:
-            mVideoPlayer->pause(true);
-            break;
-        case 2:
-            mVideoPlayer->pause(false);
-            break;
-        case 3:
-            mVideoPlayer->stop();
-            break;
+    if (strcmp(info, "stop") == 0) {
+        player->stop();
     }
-    
-    value ++;
 }
