@@ -17,6 +17,7 @@ public:
     void menuPauseCallback(cocos2d::Ref* pSender);
     void menuStopCallback(cocos2d::Ref* pSender);
     void menuSpeedCallback(cocos2d::Ref* pSender);
+    void menuSeekCallback(cocos2d::Ref* pSender);
     
     // implement the "static create()" method manually
     CREATE_FUNC(HelloWorld);

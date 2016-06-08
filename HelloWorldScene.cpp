@@ -108,6 +108,19 @@ bool HelloWorld::init()
     speedMenu->setPosition(Vec2::ZERO);
     this->addChild(speedMenu, 1);
     
+    auto seekItem = MenuItemImage::create(
+                                           "CloseNormal.png",
+                                           "CloseSelected.png",
+                                           CC_CALLBACK_1(HelloWorld::menuSeekCallback, this));
+    
+    seekItem->setPosition(Vec2(origin.x + visibleSize.width - seekItem->getContentSize().width/2 ,
+                                origin.y + seekItem->getContentSize().height * 7));
+    
+    // create menu, it's an autorelease object
+    auto seekMenu = Menu::create(seekItem, NULL);
+    seekMenu->setPosition(Vec2::ZERO);
+    this->addChild(seekMenu, 1);
+
     // add a label shows "Hello World"
     // create and initialize a label
     
@@ -165,6 +178,11 @@ void HelloWorld::menuSpeedCallback(Ref* pSender)
     static int timeScale = 0;
     mVideoPlayer->setTimeScale(timeScale);
     timeScale = (timeScale + 5) % 100;
+}
+
+void HelloWorld::menuSeekCallback(cocos2d::Ref* pSender)
+{
+    mVideoPlayer->seek(0);
 }
 
 void HelloWorld::videoEnd(VideoPlayer *player, const char *info)

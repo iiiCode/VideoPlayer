@@ -15,6 +15,7 @@
 VideoPlayer::VideoPlayer()
 : mStop(true),
 mPause(false),
+mSeek(false),
 mFormatCtx(nullptr),
 mCodecCtx(nullptr),
 mFrame(nullptr),
@@ -170,7 +171,16 @@ void VideoPlayer::pause(bool _pause)
 
 void VideoPlayer::seek(int64_t seekTime)
 {
+    if (mStop) {
+        return;
+    }
     
+    mSeek = true;
+    
+    if (mFormatCtx->start_time != AV_NOPTS_VALUE) {
+        seekTime += mFormatCtx->start_time;
+    }
+    mSeekTime = seekTime * AV_TIME_BASE;
 }
 
 void VideoPlayer::accurateSeek(int64_t seekTime)
@@ -200,7 +210,22 @@ bool VideoPlayer::init(const char *path, int width, int height)
     return true;
 }
 
-
+void VideoPlayer::doSeek()
+{
+    int ret;
+    printf("before seek....\n");
+    ret = av_seek_frame(mFormatCtx, mVideoStreamIndex, mSeekTime, AVSEEK_FLAG_BACKWARD);
+    if (ret < 0) {
+        printf("Could not find seek time: %lld\n", mSeekTime);
+        return;
+    }
+    
+    mPictureRingBuffer.notifyRingBufferExit();
+    mPictureRingBuffer.flush();
+    
+    mSeek = false;
+    printf("after seek...\n");
+}
 //static
 void *VideoPlayer::doProcessVideo(void *args)
 {
@@ -212,6 +237,11 @@ void *VideoPlayer::doProcessVideo(void *args)
     VideoPlayer *player = static_cast<VideoPlayer*>(args);
     
     while(! player->mStop) {
+        
+        if (player->mSeek) {
+            player->doSeek();
+        }
+        
         if (av_read_frame(player->mFormatCtx, &packet) < 0) {
             printf("END OF FILE.\n");
             player->mVideoEndCallback(player, "stop");
@@ -263,7 +293,6 @@ void VideoPlayer::draw(cocos2d::Renderer *renderer, const cocos2d::Mat4 &transfo
     
     if (! mStop && ! mPause) {
         
-        usleep((mTimeScale + 20) * 1000);
         mPictureRingBuffer.dequeue((DataType **)&picture);
  
         mTexture->initWithData(picture->data[0],
@@ -281,6 +310,8 @@ void VideoPlayer::draw(cocos2d::Renderer *renderer, const cocos2d::Mat4 &transfo
         
         avpicture_free(picture);
         delete picture;
+        
+        usleep((mTimeScale + 20) * 1000);
     }
     
     Sprite::draw(renderer, transform, flags);

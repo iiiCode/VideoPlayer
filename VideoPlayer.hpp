@@ -44,11 +44,13 @@ protected:
     bool init(const char *path, int width, int height);
     
 private:
+    void doSeek();
     static void *doProcessVideo(void *args);
     static void pictureDestroy(DataType *item);
 private:
     bool mStop;
     bool mPause;
+    bool mSeek;
     AVFormatContext *mFormatCtx;
     AVCodecContext *mCodecCtx;
     AVFrame* mFrame;
@@ -59,6 +61,7 @@ private:
     int mHeight;
     
     int mTimeScale;
+    int64_t mSeekTime;
     
     void (*mVideoEndCallback)(VideoPlayer *, const char *);
     RingBuffer mPictureRingBuffer;
