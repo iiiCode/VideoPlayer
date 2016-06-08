@@ -45,6 +45,7 @@ protected:
     
 private:
     static void *doProcessVideo(void *args);
+    static void pictureDestroy(DataType *item);
 private:
     bool mStop;
     bool mPause;
@@ -57,7 +58,7 @@ private:
     int mWidth;
     int mHeight;
     
-    int mDelta;
+    int mTimeScale;
     
     void (*mVideoEndCallback)(VideoPlayer *, const char *);
     RingBuffer mPictureRingBuffer;

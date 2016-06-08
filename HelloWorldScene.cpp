@@ -95,6 +95,19 @@ bool HelloWorld::init()
     stopMenu->setPosition(Vec2::ZERO);
     this->addChild(stopMenu, 1);
     
+    auto speedItem = MenuItemImage::create(
+                                          "CloseNormal.png",
+                                          "CloseSelected.png",
+                                          CC_CALLBACK_1(HelloWorld::menuSpeedCallback, this));
+    
+    speedItem->setPosition(Vec2(origin.x + visibleSize.width - speedItem->getContentSize().width/2 ,
+                               origin.y + speedItem->getContentSize().height * 6));
+    
+    // create menu, it's an autorelease object
+    auto speedMenu = Menu::create(speedItem, NULL);
+    speedMenu->setPosition(Vec2::ZERO);
+    this->addChild(speedMenu, 1);
+    
     // add a label shows "Hello World"
     // create and initialize a label
     
@@ -145,6 +158,13 @@ void HelloWorld::menuPauseCallback(Ref* pSender)
 void HelloWorld::menuStopCallback(Ref* pSender)
 {
     mVideoPlayer->stop();
+}
+
+void HelloWorld::menuSpeedCallback(Ref* pSender)
+{
+    static int timeScale = 0;
+    mVideoPlayer->setTimeScale(timeScale);
+    timeScale = (timeScale + 5) % 100;
 }
 
 void HelloWorld::videoEnd(VideoPlayer *player, const char *info)

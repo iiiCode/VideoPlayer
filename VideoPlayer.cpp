@@ -22,6 +22,7 @@ mVideoStreamIndex(-1),
 mImageConvertCtx(nullptr),
 mWidth(0),
 mHeight(0),
+mTimeScale(0),
 mVideoEndCallback(nullptr)
 {
     LOG_START();
@@ -49,69 +50,6 @@ VideoPlayer *VideoPlayer::create(const char *file, int width, int height)
     return player;
 }
 
-void VideoPlayer::stop()
-{
-    LOG_START();
-    
-    if (mStop) {
-        return;
-    }
-    
-    mStop = true;
-    mPictureRingBuffer.notifyRingBufferExit();
-    mPictureRingBuffer.flush();
-    pthread_join(mPtid, nullptr);
-    
-    sws_freeContext(mImageConvertCtx);
-    av_frame_free(&mFrame);
-    avcodec_close(mCodecCtx);
-    avformat_close_input(&mFormatCtx);
-    
-    LOG_END();
-}
-
-void VideoPlayer::pause(bool _pause)
-{
-    LOG_START();
-    if (mStop) {
-        return;
-    }
-    mPause = _pause;
-    LOG_END();
-}
-
-void VideoPlayer::seek(int64_t seekTime)
-{
-    
-}
-
-void VideoPlayer::accurateSeek(int64_t seekTime)
-{
-    
-}
-
-void VideoPlayer::setTimeScale(int scale)
-{
-    
-}
-
-void VideoPlayer::setPlaybackEndCallback(void (*callback)(VideoPlayer *, const char *))
-{
-    mVideoEndCallback = callback;
-}
-
-bool VideoPlayer::init(const char *path, int width, int height)
-{
-    Sprite::init();
-    CCDirector::sharedDirector()->getScheduler()->scheduleUpdateForTarget(this,0,false);
-    
-    mPath = strdup(path);
-    mWidth = width;
-    mHeight = height;
-    
-    return true;
-}
-
 void VideoPlayer::start()
 {
     LOG_START();
@@ -121,6 +59,7 @@ void VideoPlayer::start()
     }
     
     mStop = false;
+    mTimeScale = 0;
     av_register_all();
     
     mFilePath = CCFileUtils::sharedFileUtils()->fullPathForFilename(mPath);
@@ -180,7 +119,7 @@ void VideoPlayer::start()
         printf("sws_alloc_context failed.\n");
         return;
     }
-    sws_init_context(mImageConvertCtx, nullptr, nullptr);    
+    sws_init_context(mImageConvertCtx, nullptr, nullptr);
     mImageConvertCtx = sws_getContext(mCodecCtx->width,
                                       mCodecCtx->height,
                                       mCodecCtx->pix_fmt,
@@ -197,6 +136,70 @@ void VideoPlayer::start()
     pthread_create(&mPtid, NULL, doProcessVideo, this);
     LOG_END();
 }
+
+void VideoPlayer::stop()
+{
+    LOG_START();
+    
+    if (mStop) {
+        return;
+    }
+    
+    mStop = true;
+    mPictureRingBuffer.notifyRingBufferExit();
+    mPictureRingBuffer.flush();
+    pthread_join(mPtid, nullptr);
+    
+    sws_freeContext(mImageConvertCtx);
+    av_frame_free(&mFrame);
+    avcodec_close(mCodecCtx);
+    avformat_close_input(&mFormatCtx);
+    
+    LOG_END();
+}
+
+void VideoPlayer::pause(bool _pause)
+{
+    LOG_START();
+    if (mStop) {
+        return;
+    }
+    mPause = _pause;
+    LOG_END();
+}
+
+void VideoPlayer::seek(int64_t seekTime)
+{
+    
+}
+
+void VideoPlayer::accurateSeek(int64_t seekTime)
+{
+    
+}
+
+void VideoPlayer::setTimeScale(int scale)
+{
+    mTimeScale = scale;
+}
+
+void VideoPlayer::setPlaybackEndCallback(void (*callback)(VideoPlayer *, const char *))
+{
+    mVideoEndCallback = callback;
+}
+
+bool VideoPlayer::init(const char *path, int width, int height)
+{
+    Sprite::init();
+    CCDirector::sharedDirector()->getScheduler()->scheduleUpdateForTarget(this,0,false);
+    
+    mPath = strdup(path);
+    mWidth = width;
+    mHeight = height;
+    mPictureRingBuffer.setDestroy(pictureDestroy);
+    return true;
+}
+
 
 //static
 void *VideoPlayer::doProcessVideo(void *args)
@@ -260,7 +263,7 @@ void VideoPlayer::draw(cocos2d::Renderer *renderer, const cocos2d::Mat4 &transfo
     
     if (! mStop && ! mPause) {
         
-        usleep(20 * 1000);
+        usleep((mTimeScale + 20) * 1000);
         mPictureRingBuffer.dequeue((DataType **)&picture);
  
         mTexture->initWithData(picture->data[0],
@@ -281,5 +284,13 @@ void VideoPlayer::draw(cocos2d::Renderer *renderer, const cocos2d::Mat4 &transfo
     }
     
     Sprite::draw(renderer, transform, flags);
+}
+
+//static
+void VideoPlayer::pictureDestroy(DataType *item)
+{
+    AVPicture *picture = (AVPicture *)item;
+    avpicture_free(picture);
+    delete picture;
 }
 
