@@ -16,11 +16,12 @@ public:
     void menuStartCallback(cocos2d::Ref* pSender);
     void menuPauseCallback(cocos2d::Ref* pSender);
     void menuStopCallback(cocos2d::Ref* pSender);
-    void menuFunctionCallback(cocos2d::Ref* pSender);
     
     // implement the "static create()" method manually
     CREATE_FUNC(HelloWorld);
     
+private:
+    static void videoEnd(VideoPlayer * player, const char *info);
 private:
     bool mPause;
     VideoPlayer *mVideoPlayer;
