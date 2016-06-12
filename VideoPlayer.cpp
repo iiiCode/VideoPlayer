@@ -7,6 +7,7 @@
 //
 
 #include <unistd.h>
+#include <math.h>
 #include "Log.hpp"
 #include "VideoPlayer.hpp"
 
@@ -14,6 +15,7 @@ VideoPlayer::VideoPlayer()
 : mStop(true),
 mPause(false),
 mSeek(false),
+mAccurateSeek(false),
 mFormatCtx(nullptr),
 mCodecCtx(nullptr),
 mFrame(nullptr),
@@ -97,6 +99,7 @@ void VideoPlayer::start()
     
     vLOGE("width: %d height: %d\n", mWidth, mHeight);
     mCodecCtx = mFormatCtx->streams[mVideoStreamIndex]->codec;
+    mCodecCtx->thread_count = 4;
     
     AVCodec *codec = avcodec_find_decoder(mCodecCtx->codec_id);
     if (codec == nullptr) {
@@ -133,6 +136,7 @@ void VideoPlayer::start()
     setPosition(Vec2(size.width, size.height));
     
     pthread_create(&mPtid, NULL, doProcessVideo, this);
+    dump();
     LOG_END();
 }
 
@@ -172,18 +176,29 @@ void VideoPlayer::seek(int64_t seekTime)
     if (mStop) {
         return;
     }
-    
+
     mSeek = true;
-    
+
+    AVStream *stream = mFormatCtx->streams[mVideoStreamIndex];
     if (mFormatCtx->start_time != AV_NOPTS_VALUE) {
-        seekTime += mFormatCtx->start_time;
+        seekTime += stream->start_time * av_q2d(stream->time_base) * 1000000;
     }
-    mSeekTime = seekTime * AV_TIME_BASE;
+    mSeekTime = seekTime;
 }
 
 void VideoPlayer::accurateSeek(int64_t seekTime)
 {
-    
+    if (mStop) {
+        return;
+    }
+
+    mAccurateSeek = true;
+
+    AVStream *stream = mFormatCtx->streams[mVideoStreamIndex];
+    if (mFormatCtx->start_time != AV_NOPTS_VALUE) {
+        seekTime += stream->start_time * av_q2d(stream->time_base) * 1000000;
+    }
+    mSeekTime = seekTime;
 }
 
 void VideoPlayer::setTimeScale(int scale)
@@ -225,6 +240,56 @@ void VideoPlayer::doSeek()
     vLOGE("after seek...\n");
 }
 
+void VideoPlayer::doAccurateSeek()
+{
+    int ret;
+
+    vLOGE("before seek....\n");
+    //ret = av_seek_frame(mFormatCtx, mVideoStreamIndex, mSeekTime, 0);
+    ret = avformat_seek_file(mFormatCtx, -1, INT64_MIN, mSeekTime, INT64_MAX, 0);
+    if (ret < 0) {
+        vLOGE("Could not find seek time: %lld\n", mSeekTime);
+        return;
+    }
+
+    decodeToSeekTime();
+
+    mPictureRingBuffer.notifyRingBufferExit();
+    mPictureRingBuffer.flush();
+
+    mAccurateSeek = false;
+    vLOGE("after seek...\n");
+}
+
+void VideoPlayer::decodeToSeekTime()
+{
+    int64_t pktTS;
+    int got_frame;
+    AVStream *stream;
+    AVPacket packet;
+
+    stream = mFormatCtx->streams[mVideoStreamIndex];
+
+    while(true) {
+        if (av_read_frame(mFormatCtx, &packet) < 0) {
+            vLOGE("END OF FILE.\n");
+            mVideoEndCallback(this, "stop");
+            av_free_packet(&packet);
+            break;
+        }
+
+        avcodec_decode_video2(mCodecCtx, mFrame, &got_frame, &packet);
+
+        pktTS = (int64_t)(packet.pts * av_q2d(stream->time_base) * 1000000);
+        vLOGE("%lld - %lld", mSeekTime, pktTS);
+        av_free_packet(&packet);
+
+        if (mSeekTime <= pktTS) {
+            break;
+        }
+    }
+}
+
 //static
 void *VideoPlayer::doProcessVideo(void *args)
 {
@@ -241,6 +306,10 @@ void *VideoPlayer::doProcessVideo(void *args)
             player->doSeek();
         }
         
+        if (player->mAccurateSeek) {
+            player->doAccurateSeek();
+        }
+
         if (av_read_frame(player->mFormatCtx, &packet) < 0) {
             vLOGE("END OF FILE.\n");
             player->mVideoEndCallback(player, "stop");
@@ -325,5 +394,16 @@ void VideoPlayer::pictureDestroy(DataType *item)
     AVPicture *picture = (AVPicture *)item;
     avpicture_free(picture);
     delete picture;
+}
+
+void VideoPlayer::dump()
+{
+    AVStream *stream = mFormatCtx->streams[mVideoStreamIndex];
+
+    vLOGE("Stream start time: %lld time base(%d, %d), duration: %f",
+          mFormatCtx->streams[mVideoStreamIndex]->start_time,
+          mFormatCtx->streams[mVideoStreamIndex]->time_base.den,
+          mFormatCtx->streams[mVideoStreamIndex]->time_base.num,
+          mFormatCtx->streams[mVideoStreamIndex]->duration * av_q2d(stream->time_base) * 1000000);
 }
 

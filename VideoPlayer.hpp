@@ -50,12 +50,16 @@ protected:
     
 private:
     void doSeek();
+    void doAccurateSeek();
+    void dump();
+    void decodeToSeekTime();
     static void *doProcessVideo(void *args);
     static void pictureDestroy(DataType *item);
 private:
     bool mStop;
     bool mPause;
     bool mSeek;
+    bool mAccurateSeek;
     AVFormatContext *mFormatCtx;
     AVCodecContext *mCodecCtx;
     AVFrame* mFrame;

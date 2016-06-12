@@ -19,11 +19,17 @@ Scene* HelloWorld::createScene()
     return scene;
 }
 
+static const char *gMediaFileList[] = {
+    "/Users/ycchen/Downloads/bothHand.mp4",
+    "/storage/sdcard1/Video.mp4",
+    "/storage/sdcard1/bothHand.mp4"
+};
+
 // on "init" you need to initialize your instance
 bool HelloWorld::init()
 {
     mPause = false;
-    mVideoPlayer = VideoPlayer::create("/Users/ycchen/Video.mp4", 1024, 576);
+    mVideoPlayer = VideoPlayer::create(gMediaFileList[0], 0, 0);
     mVideoPlayer->setPlaybackEndCallback(videoEnd);
     //////////////////////////////
     // 1. super init first
@@ -182,7 +188,7 @@ void HelloWorld::menuSpeedCallback(Ref* pSender)
 
 void HelloWorld::menuSeekCallback(cocos2d::Ref* pSender)
 {
-    mVideoPlayer->seek(0);
+    mVideoPlayer->accurateSeek(60000000);
 }
 
 void HelloWorld::videoEnd(VideoPlayer *player, const char *info)
