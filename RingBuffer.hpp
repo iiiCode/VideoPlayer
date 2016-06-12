@@ -2,6 +2,7 @@
 #define _RING_BUFFER_H_
 
 #include <semaphore.h>
+#include "Log.hpp"
 
 typedef void DataType;
 #define RING_BUFFER_SIZE 10
@@ -21,8 +22,13 @@ private:
     void init();
     void destroy();
 private:
+#ifdef ANDROID_PLATFORM
+    sem_t mWriteSem;
+    sem_t mReadSem;
+#else
     sem_t *mWriteSem;
     sem_t *mReadSem;
+#endif
     
     int mReadIndex;
     int mWriteIndex;

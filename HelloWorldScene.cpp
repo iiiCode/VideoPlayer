@@ -75,7 +75,7 @@ bool HelloWorld::init()
                                            CC_CALLBACK_1(HelloWorld::menuPauseCallback, this));
     
     pauseItem->setPosition(Vec2(origin.x + visibleSize.width - pauseItem->getContentSize().width/2 ,
-                                origin.y + pauseItem->getContentSize().height * 3));
+                                origin.y + pauseItem->getContentSize().height * 4));
     
     // create menu, it's an autorelease object
     auto pauseMenu = Menu::create(pauseItem, NULL);
@@ -88,7 +88,7 @@ bool HelloWorld::init()
                                            CC_CALLBACK_1(HelloWorld::menuStopCallback, this));
     
     stopItem->setPosition(Vec2(origin.x + visibleSize.width - stopItem->getContentSize().width/2 ,
-                                origin.y + stopItem->getContentSize().height * 4));
+                                origin.y + stopItem->getContentSize().height * 6));
     
     // create menu, it's an autorelease object
     auto stopMenu = Menu::create(stopItem, NULL);
@@ -101,7 +101,7 @@ bool HelloWorld::init()
                                           CC_CALLBACK_1(HelloWorld::menuSpeedCallback, this));
     
     speedItem->setPosition(Vec2(origin.x + visibleSize.width - speedItem->getContentSize().width/2 ,
-                               origin.y + speedItem->getContentSize().height * 6));
+                               origin.y + speedItem->getContentSize().height * 8));
     
     // create menu, it's an autorelease object
     auto speedMenu = Menu::create(speedItem, NULL);
@@ -114,7 +114,7 @@ bool HelloWorld::init()
                                            CC_CALLBACK_1(HelloWorld::menuSeekCallback, this));
     
     seekItem->setPosition(Vec2(origin.x + visibleSize.width - seekItem->getContentSize().width/2 ,
-                                origin.y + seekItem->getContentSize().height * 7));
+                                origin.y + seekItem->getContentSize().height * 10));
     
     // create menu, it's an autorelease object
     auto seekMenu = Menu::create(seekItem, NULL);

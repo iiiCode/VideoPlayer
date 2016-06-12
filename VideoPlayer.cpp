@@ -7,10 +7,8 @@
 //
 
 #include <unistd.h>
+#include "Log.hpp"
 #include "VideoPlayer.hpp"
-
-#define LOG_START() printf("Enter: %s\n", __func__)
-#define LOG_END()   printf("Exit: %s\n", __func__)
 
 VideoPlayer::VideoPlayer()
 : mStop(true),
@@ -64,15 +62,15 @@ void VideoPlayer::start()
     av_register_all();
     
     mFilePath = CCFileUtils::sharedFileUtils()->fullPathForFilename(mPath);
-    printf("file path: %s\n", mFilePath.c_str());
+    vLOGE("file path: %s\n", mFilePath.c_str());
     
     if (avformat_open_input(&mFormatCtx, mFilePath.c_str(), nullptr, nullptr) != 0) {
-        printf("avformat_open_input failed.\n");
+        vLOGE("avformat_open_input failed.\n");
         return;
     }
     
     if (avformat_find_stream_info(mFormatCtx, nullptr) < 0) {
-        printf("avformat_find_stream_info failed.\n");
+        vLOGE("avformat_find_stream_info failed.\n");
         return;
     }
     
@@ -83,7 +81,7 @@ void VideoPlayer::start()
         }
     }
     
-    printf("video stream index: %d\n", mVideoStreamIndex);
+    vLOGE("video stream index: %d\n", mVideoStreamIndex);
     
     if (mVideoStreamIndex == -1) {
         return;
@@ -97,27 +95,27 @@ void VideoPlayer::start()
         mHeight = mFormatCtx->streams[mVideoStreamIndex]->codec->height;
     }
     
-    printf("width: %d height: %d\n", mWidth, mHeight);
+    vLOGE("width: %d height: %d\n", mWidth, mHeight);
     mCodecCtx = mFormatCtx->streams[mVideoStreamIndex]->codec;
     
     AVCodec *codec = avcodec_find_decoder(mCodecCtx->codec_id);
     if (codec == nullptr) {
-        printf("avcodec_find_decoder failed.\n");
+        vLOGE("avcodec_find_decoder failed.\n");
         return;
     }
     
     if (avcodec_open2(mCodecCtx, codec, nullptr) != 0) {
-        printf("avcodec_open2 failed.\n");
+        vLOGE("avcodec_open2 failed.\n");
         return;
     }
     
     if ((mFrame = av_frame_alloc()) == nullptr) {
-        printf("av_frame_alloc failed.\n");
+        vLOGE("av_frame_alloc failed.\n");
     }
     
     mImageConvertCtx = sws_alloc_context();
     if (mImageConvertCtx == nullptr) {
-        printf("sws_alloc_context failed.\n");
+        vLOGE("sws_alloc_context failed.\n");
         return;
     }
     sws_init_context(mImageConvertCtx, nullptr, nullptr);
@@ -213,10 +211,10 @@ bool VideoPlayer::init(const char *path, int width, int height)
 void VideoPlayer::doSeek()
 {
     int ret;
-    printf("before seek....\n");
+    vLOGE("before seek....\n");
     ret = av_seek_frame(mFormatCtx, mVideoStreamIndex, mSeekTime, AVSEEK_FLAG_BACKWARD);
     if (ret < 0) {
-        printf("Could not find seek time: %lld\n", mSeekTime);
+        vLOGE("Could not find seek time: %lld\n", mSeekTime);
         return;
     }
     
@@ -224,8 +222,9 @@ void VideoPlayer::doSeek()
     mPictureRingBuffer.flush();
     
     mSeek = false;
-    printf("after seek...\n");
+    vLOGE("after seek...\n");
 }
+
 //static
 void *VideoPlayer::doProcessVideo(void *args)
 {
@@ -243,7 +242,7 @@ void *VideoPlayer::doProcessVideo(void *args)
         }
         
         if (av_read_frame(player->mFormatCtx, &packet) < 0) {
-            printf("END OF FILE.\n");
+            vLOGE("END OF FILE.\n");
             player->mVideoEndCallback(player, "stop");
             av_free_packet(&packet);
             break;
@@ -254,12 +253,17 @@ void *VideoPlayer::doProcessVideo(void *args)
             avcodec_decode_video2(player->mCodecCtx, player->mFrame, &got_frame, &packet);
             
             if (got_frame == 0) {
-                printf("Do not get a frame.\n");
+                vLOGE("Do not get a frame.\n");
                 av_free_packet(&packet);
                 continue;
             }
             
             picture = new AVPicture;
+            if (! picture) {
+                vLOGE("new AVPicture failed.");
+                continue;
+            }
+
             avpicture_alloc(picture, PIX_FMT_RGB24, player->mWidth, player->mHeight);
             sws_scale (player->mImageConvertCtx,
                        player->mFrame->data,
@@ -268,11 +272,10 @@ void *VideoPlayer::doProcessVideo(void *args)
                        picture->data,
                        picture->linesize);
             
-
             player->mPictureRingBuffer.enqueue(picture);
             
         } else {
-            printf("Not video stream packet, ignore it.\n");
+            vLOGE("Not video stream packet, ignore it.\n");
         }
         
         av_free_packet(&packet);
@@ -294,7 +297,7 @@ void VideoPlayer::draw(cocos2d::Renderer *renderer, const cocos2d::Mat4 &transfo
     if (! mStop && ! mPause) {
         
         mPictureRingBuffer.dequeue((DataType **)&picture);
- 
+
         mTexture->initWithData(picture->data[0],
                                mWidth * mHeight,
                                kCCTexture2DPixelFormat_RGB888,
@@ -311,9 +314,8 @@ void VideoPlayer::draw(cocos2d::Renderer *renderer, const cocos2d::Mat4 &transfo
         avpicture_free(picture);
         delete picture;
         
-        usleep((mTimeScale + 20) * 1000);
+        usleep((mTimeScale) * 1000);
     }
-    
     Sprite::draw(renderer, transform, flags);
 }
 
