@@ -23,10 +23,14 @@ mVideoStreamIndex(-1),
 mImageConvertCtx(nullptr),
 mWidth(0),
 mHeight(0),
-mTimeScale(0),
-mVideoEndCallback(nullptr)
+mTimeScale(1),
+mVideoEndCallback(nullptr),
+mPicture(nullptr),
+mTimeBase(0),
+mFPS(0)
 {
     LOG_START();
+    pthread_mutex_init(&mRenderMutex, nullptr);
     LOG_END();
 }
 
@@ -34,6 +38,7 @@ VideoPlayer::~VideoPlayer()
 {
     LOG_START();
     free(mPath);
+    pthread_mutex_destroy(&mRenderMutex);
     LOG_END();
 }
 
@@ -60,7 +65,7 @@ void VideoPlayer::start()
     }
     
     mStop = false;
-    mTimeScale = 0;
+    mTimeScale = 1;
     av_register_all();
     
     mFilePath = CCFileUtils::sharedFileUtils()->fullPathForFilename(mPath);
@@ -135,8 +140,9 @@ void VideoPlayer::start()
     const CCSize& size = CCDirector::getInstance()->getWinSize();
     setPosition(Vec2(size.width, size.height));
     
-    pthread_create(&mPtid, NULL, doProcessVideo, this);
-    dump();
+    pthread_create(&mDcoderThread, nullptr, doProcessVideo, this);
+    pthread_create(&mRenderThread, nullptr, doTimeCounter, this);
+
     LOG_END();
 }
 
@@ -151,7 +157,8 @@ void VideoPlayer::stop()
     mStop = true;
     mPictureRingBuffer.notifyRingBufferExit();
     mPictureRingBuffer.flush();
-    pthread_join(mPtid, nullptr);
+    pthread_join(mDcoderThread, nullptr);
+    pthread_join(mRenderThread, nullptr);
     
     sws_freeContext(mImageConvertCtx);
     av_frame_free(&mFrame);
@@ -201,9 +208,9 @@ void VideoPlayer::accurateSeek(int64_t seekTime)
     mSeekTime = seekTime;
 }
 
-void VideoPlayer::setTimeScale(int scale)
+void VideoPlayer::setTimeScale(float scale)
 {
-    mTimeScale = scale;
+    mTimeScale = (int)(1 / scale);
 }
 
 void VideoPlayer::setPlaybackEndCallback(void (*callback)(VideoPlayer *, const char *))
@@ -334,6 +341,7 @@ void *VideoPlayer::doProcessVideo(void *args)
             }
 
             avpicture_alloc(picture, PIX_FMT_RGB24, player->mWidth, player->mHeight);
+            
             sws_scale (player->mImageConvertCtx,
                        player->mFrame->data,
                        player->mFrame->linesize,
@@ -357,34 +365,69 @@ void *VideoPlayer::doProcessVideo(void *args)
 
 void VideoPlayer::update(float delta)
 {
+    //mTimeScale = (int) (1 / delta);
+    //vLOGE("delta: %d", mTimeScale);
 }
 
+//static
+void VideoPlayer::doUpdatePicture(void *args)
+{
+    VideoPlayer *player = static_cast<VideoPlayer*>(args);
+    
+    if (! player->mStop && ! player->mPause) {
+        
+        pthread_mutex_lock(&(player->mRenderMutex));
+        
+        if (player->mPicture) {
+            avpicture_free(player->mPicture);
+            delete player->mPicture;
+        }
+        
+        player->mPictureRingBuffer.dequeue((DataType **)&player->mPicture);
+        pthread_mutex_unlock(&(player->mRenderMutex));
+    }
+}
+
+//static
+void * VideoPlayer::doTimeCounter(void *args)
+{
+    LOG_START();
+    VideoPlayer *player = static_cast<VideoPlayer*>(args);
+    
+    while(! player->mStop) {
+        if (player->mTimeBase % (24*player->mTimeScale) == 0) {
+            player->doUpdatePicture(player);
+        }
+        usleep(1000000 / 600);
+        player->mTimeBase = (player->mTimeBase + 1) % 600;
+    }
+    
+    LOG_END();
+    
+    return nullptr;
+}
 void VideoPlayer::draw(cocos2d::Renderer *renderer, const cocos2d::Mat4 &transform, uint32_t flags)
 {
-    AVPicture *picture;
+    pthread_mutex_lock(&mRenderMutex);
     
-    if (! mStop && ! mPause) {
+    if (mPicture) {
         
-        mPictureRingBuffer.dequeue((DataType **)&picture);
-
-        mTexture->initWithData(picture->data[0],
+        mTexture->initWithData(mPicture->data[0],
                                mWidth * mHeight,
                                kCCTexture2DPixelFormat_RGB888,
                                mWidth, mHeight, Size(mWidth, mHeight));
         initWithTexture(mTexture);
         setContentSize(Size(mWidth, mHeight));
-
+        
         GL::bindTexture2D(mTexture->getName());
         glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB,
                      mWidth, mHeight, 0,
                      GL_RGB, GL_UNSIGNED_BYTE,
-                     picture->data[0]);
-        
-        avpicture_free(picture);
-        delete picture;
-        
-        usleep((mTimeScale) * 1000);
+                     mPicture->data[0]);
     }
+    
+    pthread_mutex_unlock(&mRenderMutex);
+    
     Sprite::draw(renderer, transform, flags);
 }
 

@@ -181,9 +181,10 @@ void HelloWorld::menuStopCallback(Ref* pSender)
 
 void HelloWorld::menuSpeedCallback(Ref* pSender)
 {
-    static int timeScale = 0;
-    mVideoPlayer->setTimeScale(timeScale);
-    timeScale = (timeScale + 5) % 100;
+    static int i = 0;
+    float timeScale[] = {0.2, 0.5, 1};
+    mVideoPlayer->setTimeScale(timeScale[i]);
+    i = (i + 1) % 3;
 }
 
 void HelloWorld::menuSeekCallback(cocos2d::Ref* pSender)

@@ -40,7 +40,7 @@ public:
     void pause(bool _pause);
     void seek(int64_t seekTime);
     void accurateSeek(int64_t seekTime);
-    void setTimeScale(int scale);
+    void setTimeScale(float scale);
     void setPlaybackEndCallback(void (callback)(VideoPlayer *, const char *));
     virtual void update(float delta);
     void draw(Renderer *renderer, const Mat4& transform, uint32_t flags);
@@ -53,6 +53,8 @@ private:
     void doAccurateSeek();
     void dump();
     void decodeToSeekTime();
+    static void *doTimeCounter(void *args);
+    static void doUpdatePicture(void *args);
     static void *doProcessVideo(void *args);
     static void pictureDestroy(DataType *item);
 private:
@@ -77,10 +79,16 @@ private:
   
     std::string mFilePath;
     
-    pthread_t mPtid;
-    
     char *mPath;
     Texture2D *mTexture;
+    
+    AVPicture *mPicture;
+    int64_t mTimeBase;
+    int mFPS;
+    
+    pthread_t mDcoderThread;
+    pthread_t mRenderThread;
+    pthread_mutex_t mRenderMutex;
 };
 
 #endif //_VIDEO_PLAYER_H_
