@@ -23,7 +23,7 @@ mVideoStreamIndex(-1),
 mImageConvertCtx(nullptr),
 mWidth(0),
 mHeight(0),
-mTimeScale(1),
+mTimeScale(1.0),
 mVideoEndCallback(nullptr),
 mPicture(nullptr),
 mTimeBase(0),
@@ -65,7 +65,7 @@ void VideoPlayer::start()
     }
     
     mStop = false;
-    mTimeScale = 1;
+    mTimeScale = 1.0;
     av_register_all();
     
     mFilePath = CCFileUtils::sharedFileUtils()->fullPathForFilename(mPath);
@@ -210,7 +210,8 @@ void VideoPlayer::accurateSeek(int64_t seekTime)
 
 void VideoPlayer::setTimeScale(float scale)
 {
-    mTimeScale = (int)(1 / scale);
+    mTimeScale = scale;
+    vLOGE("mTimeScale: %g", mTimeScale);
 }
 
 void VideoPlayer::setPlaybackEndCallback(void (*callback)(VideoPlayer *, const char *))
@@ -395,7 +396,8 @@ void * VideoPlayer::doTimeCounter(void *args)
     VideoPlayer *player = static_cast<VideoPlayer*>(args);
     
     while(! player->mStop) {
-        if (player->mTimeBase % (24*player->mTimeScale) == 0) {
+        int base = (int)(24.0 / player->mTimeScale);
+        if (player->mTimeBase % base == 0) {
             player->doUpdatePicture(player);
         }
         usleep(1000000 / 600);

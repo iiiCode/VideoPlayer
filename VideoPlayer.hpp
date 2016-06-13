@@ -71,7 +71,7 @@ private:
     int mWidth;
     int mHeight;
     
-    int mTimeScale;
+    float mTimeScale;
     int64_t mSeekTime;
     
     void (*mVideoEndCallback)(VideoPlayer *, const char *);
