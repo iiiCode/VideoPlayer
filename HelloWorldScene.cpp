@@ -20,7 +20,7 @@ Scene* HelloWorld::createScene()
 }
 
 static const char *gMediaFileList[] = {
-    "/Users/ycchen/Downloads/bothHand.mp4",
+    "/Users/ycchen/workdir/resources/bothHand.mp4",
     "/storage/sdcard1/Video.mp4",
     "/storage/sdcard1/bothHand.mp4"
 };

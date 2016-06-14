@@ -80,7 +80,6 @@ private:
     std::string mFilePath;
     
     char *mPath;
-    Texture2D *mTexture;
     
     AVPicture *mPicture;
     int64_t mTimeBase;
@@ -92,3 +91,4 @@ private:
 };
 
 #endif //_VIDEO_PLAYER_H_
+

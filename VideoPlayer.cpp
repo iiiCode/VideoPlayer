@@ -135,8 +135,6 @@ void VideoPlayer::start()
                                       PIX_FMT_RGB24,
                                       SWS_FAST_BILINEAR, NULL, NULL, NULL);
     
-    mTexture = new Texture2D();
-    mTexture->autorelease();
     const CCSize& size = CCDirector::getInstance()->getWinSize();
     setPosition(Vec2(size.width, size.height));
     
@@ -342,7 +340,7 @@ void *VideoPlayer::doProcessVideo(void *args)
             }
 
             avpicture_alloc(picture, PIX_FMT_RGB24, player->mWidth, player->mHeight);
-            
+
             sws_scale (player->mImageConvertCtx,
                        player->mFrame->data,
                        player->mFrame->linesize,
@@ -414,14 +412,16 @@ void VideoPlayer::draw(cocos2d::Renderer *renderer, const cocos2d::Mat4 &transfo
     
     if (mPicture) {
         
-        mTexture->initWithData(mPicture->data[0],
+        Texture2D *texture = new Texture2D();
+        texture->autorelease();
+        texture->initWithData(mPicture->data[0],
                                mWidth * mHeight,
                                kCCTexture2DPixelFormat_RGB888,
                                mWidth, mHeight, Size(mWidth, mHeight));
-        initWithTexture(mTexture);
+        initWithTexture(texture);
         setContentSize(Size(mWidth, mHeight));
         
-        GL::bindTexture2D(mTexture->getName());
+        GL::bindTexture2D(texture->getName());
         glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB,
                      mWidth, mHeight, 0,
                      GL_RGB, GL_UNSIGNED_BYTE,
